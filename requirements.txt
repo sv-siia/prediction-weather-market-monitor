@@ -1,0 +1,13 @@
+requests==2.31.0
+geopy==2.4.1
+tenacity==8.2.3
+psycopg2-binary==2.9.9
+pytest==7.4.0
+pytest-cov==4.1.0
+great-expectations==0.18.0
+kafka-python-ng==2.2.3
+python-snappy==0.7.3
+timezonefinder==6.5.9
+python-dotenv==1.0.0
+fastavro==1.9.4
+prometheus_client==0.20.0

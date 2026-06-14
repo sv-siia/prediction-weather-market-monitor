@@ -1,0 +1,441 @@
+
+services:
+
+  # ── Zookeeper (for Kafka) ──────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_4LW_COMMANDS_WHITELIST: "ruok,srvr,stat"
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "bash", "-c", "timeout 3 bash -c 'cat /dev/null > /dev/tcp/localhost/2181'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - prediction-network
+
+  # ── Kafka ────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # INTERNAL — for inter-container communication (docker network)
+      # EXTERNAL — for host machine access (localhost)
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_COMPRESSION_TYPE: snappy
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_MS: 604800000
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+      KAFKA_MESSAGE_MAX_BYTES: 1048576
+      # Disabled — topics are created by kafka-init with proper settings
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    mem_limit: 1536m
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - prediction-network
+
+  # ── Schema Registry ──────────────────────────────────────────────
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.0
+    container_name: schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8085:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    healthcheck:
+      test: ["CMD", "bash", "-c", "curl -sf http://localhost:8081/subjects || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - prediction-network
+
+  # ── Kafka topic initialiser (runs once, then exits) ───────────────
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo 'Creating Kafka topics...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --topic polymarket-predictions-raw --partitions 3 --replication-factor 1 --config retention.ms=604800000 --config cleanup.policy=delete --config compression.type=snappy
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --topic weather-actuals-raw --partitions 3 --replication-factor 1 --config retention.ms=604800000 --config cleanup.policy=delete --config compression.type=snappy
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --topic market-weather-correlations --partitions 3 --replication-factor 1 --config retention.ms=2592000000 --config cleanup.policy=delete --config compression.type=snappy
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --topic market-accuracy-aggregates --partitions 3 --replication-factor 1 --config retention.ms=2592000000 --config cleanup.policy=compact --config compression.type=snappy
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --topic arbitrage-alerts --partitions 3 --replication-factor 1 --config retention.ms=2592000000 --config cleanup.policy=compact --config compression.type=snappy
+        echo 'Topics created:'
+        kafka-topics --list --bootstrap-server kafka:29092
+    networks:
+      - prediction-network
+
+  # ── Flink JobManager ─────────────────────────────────────────────
+  flink-jobmanager:
+    image: apache/flink:1.18-scala_2.12
+    container_name: flink-jobmanager
+    command: jobmanager
+    ports:
+      - "8081:8081"
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        state.backend: filesystem
+        state.checkpoints.dir: file:///flink-checkpoints
+        execution.checkpointing.interval: 60000
+        restart-strategy: exponential-delay
+        restart-strategy.exponential-delay.max-attempts: 5
+    volumes:
+      - flink-checkpoints:/flink-checkpoints
+    mem_limit: 512m
+    networks:
+      - prediction-network
+
+  # ── Flink TaskManager ────────────────────────────────────────────
+  flink-taskmanager:
+    image: apache/flink:1.18-scala_2.12
+    container_name: flink-taskmanager
+    command: taskmanager
+    depends_on:
+      - flink-jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 2
+    volumes:
+      - flink-checkpoints:/flink-checkpoints
+    mem_limit: 512m
+    networks:
+      - prediction-network
+
+  # ── PostgreSQL ───────────────────────────────────────────────────
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d prediction_market"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - prediction-network
+
+  # ── Manifold Producer ────────────────────────────────────────────
+  manifold-producer:
+    build: .
+    container_name: manifold-producer
+    command: python producers/manifold_producer.py
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"   # Prometheus /metrics
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      POLYMARKET_POLL_INTERVAL: "300"
+      USE_SYNTHETIC_DATA: "false"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    networks:
+      - prediction-network
+
+  # ── Weather Producer ─────────────────────────────────────────────
+  weather-producer:
+    build: .
+    container_name: weather-producer
+    command: python producers/weather_producer.py
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8001:8001"   # Prometheus /metrics
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      WEATHER_POLL_INTERVAL: "900"
+      USE_SYNTHETIC_DATA: "false"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+    networks:
+      - prediction-network
+
+  # ── Correlation Job (Scenario 1: Python scripts) ─────────────────
+  correlation-job:
+    build: .
+    container_name: correlation-job
+    profiles: ["python"]
+    command: >
+      sh -c "echo 'Waiting for producers...' && sleep 60 &&
+             while true; do
+               python flink_jobs/correlation_job.py;
+               echo 'Correlation job finished, restarting in 5 min...';
+               sleep 300;
+             done"
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8002:8002"   # Prometheus /metrics
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+      FLINK_MODE: ${FLINK_MODE:-flink_jobs}
+    networks:
+      - prediction-network
+
+  # ── Aggregation Job (Scenario 1: Python scripts) ─────────────────
+  aggregation-job:
+    build: .
+    container_name: aggregation-job
+    profiles: ["python"]
+    command: >
+      sh -c "echo 'Waiting for correlation job...' && sleep 120 &&
+             while true; do
+               python flink_jobs/aggregation_job.py;
+               echo 'Aggregation job finished, restarting in 5 min...';
+               sleep 300;
+             done"
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8003:8003"   # Prometheus /metrics
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+    networks:
+      - prediction-network
+
+  # ── Anomaly Job (Scenario 1: Python scripts) ──────────────────────
+  anomaly-job:
+    build: .
+    container_name: anomaly-job
+    profiles: ["python"]
+    command: >
+      sh -c "echo 'Waiting for aggregation job...' && sleep 180 &&
+             while true; do
+               python flink_jobs/anomaly_job.py;
+               echo 'Anomaly job finished, restarting in 5 min...';
+               sleep 300;
+             done"
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8004:8004"   # Prometheus /metrics
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+    networks:
+      - prediction-network
+
+  # ── Correlation Job (Scenario 2: PyFlink with watermarks) ─────────
+  correlation-job-pyflink:
+    build:
+      context: .
+      dockerfile: Dockerfile.pyflink
+    container_name: correlation-job-pyflink
+    profiles: ["pyflink"]
+    command: python flink_jobs_pyflink/correlation_job.py
+    restart: on-failure
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      flink-jobmanager:
+        condition: service_started
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+    networks:
+      - prediction-network
+
+  # ── Aggregation Job (Scenario 2: PyFlink with watermarks) ─────────
+  aggregation-job-pyflink:
+    build:
+      context: .
+      dockerfile: Dockerfile.pyflink
+    container_name: aggregation-job-pyflink
+    profiles: ["pyflink"]
+    command: python flink_jobs_pyflink/aggregation_job.py
+    restart: on-failure
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      flink-jobmanager:
+        condition: service_started
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+    networks:
+      - prediction-network
+
+  # ── Anomaly Job (Scenario 2: PyFlink with watermarks) ─────────────
+  anomaly-job-pyflink:
+    build:
+      context: .
+      dockerfile: Dockerfile.pyflink
+    container_name: anomaly-job-pyflink
+    profiles: ["pyflink"]
+    command: python flink_jobs_pyflink/anomaly_job.py
+    restart: on-failure
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      flink-jobmanager:
+        condition: service_started
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prediction_market
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+    networks:
+      - prediction-network
+
+  # ── Prometheus ───────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    mem_limit: 256m
+    networks:
+      - prediction-network
+
+  # ── Grafana ──────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Auto-provision PostgreSQL datasource
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/prediction_market.json:/var/lib/grafana/dashboards/prediction_market.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+    networks:
+      - prediction-network
+
+# ── Volumes ──────────────────────────────────────────────────────
+volumes:
+  postgres-data:
+  grafana-data:
+  flink-checkpoints:
+
+# ── Network ──────────────────────────────────────────────────────
+networks:
+  prediction-network:
+    driver: bridge

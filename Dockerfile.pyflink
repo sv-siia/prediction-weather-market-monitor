@@ -1,0 +1,29 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libsnappy-dev \
+    openjdk-21-jre-headless \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+COPY requirements.txt .
+COPY requirements-pyflink.txt .
+RUN pip install --no-cache-dir setuptools && \
+    pip install --no-cache-dir -r requirements-pyflink.txt
+
+# Download Flink Kafka connector JAR and its kafka-clients dependency
+RUN mkdir -p /app/jars && \
+    curl -fL "https://repo1.maven.org/maven2/org/apache/flink/flink-connector-kafka/3.0.2-1.18/flink-connector-kafka-3.0.2-1.18.jar" \
+         -o /app/jars/flink-connector-kafka.jar && \
+    curl -fL "https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.4.0/kafka-clients-3.4.0.jar" \
+         -o /app/jars/kafka-clients.jar
+
+COPY . .
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
