@@ -1,0 +1,25 @@
+{
+  "type": "record",
+  "name": "Correlation",
+  "namespace": "com.predictionmarket",
+  "doc": "Correlated prediction + weather record",
+  "fields": [
+    {"name": "CONDITION_ID",          "type": "string"},
+    {"name": "QUESTION",              "type": "string"},
+    {"name": "LOCATION_NAME",         "type": "string"},
+    {"name": "MARKET_TYPE",           "type": "string"},
+    {"name": "MARKET_STATUS",         "type": "string"},
+    {"name": "YES_PRICE",             "type": "double"},
+    {"name": "CLOSED",                "type": "boolean"},
+    {"name": "END_DATE_ISO",          "type": ["null", "string"], "default": null},
+    {"name": "ACTUAL_TEMP_C",         "type": ["null", "double"], "default": null},
+    {"name": "ACTUAL_TEMP_F",         "type": ["null", "double"], "default": null},
+    {"name": "ACTUAL_PRECIP_MM",      "type": ["null", "double"], "default": null},
+    {"name": "ACTUAL_WEATHER_CODE",   "type": ["null", "int"],    "default": null},
+    {"name": "ACTUAL_OUTCOME",        "type": ["null", "int"],    "default": null},
+    {"name": "PREDICTION_ERROR",      "type": ["null", "double"], "default": null},
+    {"name": "CORRELATION_METHOD",    "type": "string"},
+    {"name": "CORRELATION_LATENCY_SEC", "type": ["null", "int"], "default": null},
+    {"name": "POLL_TIMESTAMP",        "type": "string"}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "Alert",
+  "namespace": "com.predictionmarket",
+  "doc": "Anomaly or arbitrage alert",
+  "fields": [
+    {"name": "ALERT_TYPE",     "type": "string"},
+    {"name": "SEVERITY",       "type": "string"},
+    {"name": "LOCATION_NAME",  "type": "string"},
+    {"name": "MARKET_TYPE",    "type": "string"},
+    {"name": "METRIC_VALUE",   "type": ["null", "double"], "default": null},
+    {"name": "THRESHOLD",      "type": ["null", "double"], "default": null},
+    {"name": "DEVIATION",      "type": ["null", "double"], "default": null},
+    {"name": "MESSAGE",        "type": "string"},
+    {"name": "CREATED_AT",     "type": "string"}
+  ]
+}

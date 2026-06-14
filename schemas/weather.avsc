@@ -1,0 +1,19 @@
+{
+  "type": "record",
+  "name": "WeatherObservation",
+  "namespace": "com.predictionmarket",
+  "doc": "Weather observation record from Open-Meteo API",
+  "fields": [
+    {"name": "LOCATION_NAME",    "type": "string"},
+    {"name": "OBSERVATION_DATE", "type": "string"},
+    {"name": "WEATHER_TYPE",     "type": "string"},
+    {"name": "TEMP_C",           "type": ["null", "double"], "default": null},
+    {"name": "TEMP_F",           "type": ["null", "double"], "default": null},
+    {"name": "PRECIP_MM",        "type": ["null", "double"], "default": null},
+    {"name": "RAIN_MM",          "type": ["null", "double"], "default": null},
+    {"name": "WEATHER_CODE",     "type": ["null", "int"],    "default": null},
+    {"name": "WIND_KMH",         "type": ["null", "double"], "default": null},
+    {"name": "SOURCE",           "type": "string"},
+    {"name": "POLL_TIMESTAMP",   "type": "string"}
+  ]
+}

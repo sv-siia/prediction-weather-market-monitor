@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "Aggregate",
+  "namespace": "com.predictionmarket",
+  "doc": "Accuracy aggregate per location+market_type over 1h window",
+  "fields": [
+    {"name": "LOCATION_NAME",         "type": "string"},
+    {"name": "MARKET_TYPE",           "type": "string"},
+    {"name": "ACCURACY_RATE",         "type": "double"},
+    {"name": "AVG_PREDICTION_ERROR",  "type": "double"},
+    {"name": "TOTAL_PREDICTIONS",     "type": "int"},
+    {"name": "CORRECT_PREDICTIONS",   "type": "int"},
+    {"name": "VOLUME_WEIGHTED_ACC",   "type": "double"},
+    {"name": "BIAS_SCORE",            "type": "double"},
+    {"name": "WINDOW_START",          "type": "string"},
+    {"name": "WINDOW_END",            "type": "string"}
+  ]
+}

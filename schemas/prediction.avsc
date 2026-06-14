@@ -1,0 +1,21 @@
+{
+  "type": "record",
+  "name": "Prediction",
+  "namespace": "com.predictionmarket",
+  "doc": "Weather prediction market record from Manifold Markets",
+  "fields": [
+    {"name": "CONDITION_ID",   "type": "string"},
+    {"name": "QUESTION",       "type": "string"},
+    {"name": "LOCATION_NAME",  "type": "string"},
+    {"name": "MARKET_TYPE",    "type": "string"},
+    {"name": "MARKET_STATUS",  "type": "string"},
+    {"name": "YES_PRICE",      "type": "double"},
+    {"name": "NO_PRICE",       "type": ["null", "double"], "default": null},
+    {"name": "WINNER",         "type": ["null", "boolean"], "default": null},
+    {"name": "CLOSED",         "type": "boolean"},
+    {"name": "END_DATE_ISO",   "type": ["null", "string"], "default": null},
+    {"name": "WEATHER_TYPE",   "type": "string"},
+    {"name": "IS_ARBITRAGE",   "type": "boolean"},
+    {"name": "POLL_TIMESTAMP", "type": "string"}
+  ]
+}
