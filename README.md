@@ -19,6 +19,7 @@
 - [Two Execution Scenarios](#two-execution-scenarios)
 - [Components](#components)
 - [Kafka Topics](#kafka-topics)
+- [Database Schema](#database-schema)
 - [Quick Start](#quick-start)
 - [Monitoring](#monitoring)
 - [Testing](#testing)
@@ -207,6 +208,57 @@ Computes per `(location, market_type)` over 1h sliding / 15min slide windows:
 | `arbitrage-alerts` | 3 | 30 days | compact | Snappy |
 
 All topics are created automatically on first `docker compose up` via `kafka-init` container.
+
+---
+
+## Database Schema
+
+4 tables in PostgreSQL (`prediction_market` database), initialized automatically via `database/init.sql`:
+
+```
+┌─────────────────────────────────┐         ┌──────────────────────────────────┐
+│       market_correlations       │         │   market_accuracy_aggregates     │
+├─────────────────────────────────┤         ├──────────────────────────────────┤
+│ id (PK)                         │ ──────► │ id (PK)                          │
+│ condition_id                    │ grouped │ location_name                    │
+│ location_name                   │  by loc │ market_type                      │
+│ market_type                     │  + type │ window_start / window_end        │
+│ market_status                   │         │ total_predictions                │
+│ yes_price                       │         │ correct_predictions              │
+│ winner / closed                 │         │ accuracy_rate                    │
+│ weather_type                    │         │ avg_prediction_error             │
+│ observation_date                │         │ volume_weighted_accuracy         │
+│ actual_temp_c / actual_temp_f   │         │ bias_score                       │
+│ actual_precip_mm                │         │ over/under_prediction_count      │
+│ actual_outcome                  │         │ updated_at                       │
+│ prediction_error                │         └──────────────────────────────────┘
+│ correlation_method              │
+│ poll_timestamp / created_at     │         ┌──────────────────────────────────┐
+└─────────────────────────────────┘         │         anomaly_alerts           │
+                │                           ├──────────────────────────────────┤
+                │ condition_id              │ id (PK)                          │
+                └──────────────────────────►│ condition_id                     │
+                                            │ alert_type                       │
+                                            │ severity (low/medium/high/crit.) │
+                                            │ location_name / market_type      │
+                                            │ message / metric_value           │
+                                            │ price_sum / arbitrage_margin     │
+                                            │ is_resolved / detected_at        │
+                                            └──────────────────────────────────┘
+
+┌──────────────────────────────────┐
+│         pipeline_health          │
+├──────────────────────────────────┤
+│ id (PK)                          │
+│ component                        │
+│ status (healthy/degraded/down)   │
+│ messages_processed / error_count │
+│ last_message_at / latency_ms     │
+│ recorded_at                      │
+└──────────────────────────────────┘
+```
+
+**5 Grafana views** built on top: `v_current_accuracy`, `v_recent_correlations`, `v_active_alerts`, `v_accuracy_trend`, `v_pipeline_health`
 
 ---
 
