@@ -1,0 +1,35 @@
+[run]
+omit =
+    producers/polymarket_producer.py
+    producers/utils/circuit_breaker.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    def run\(
+    log\.
+    log\.info
+    log\.warning
+    log\.error
+    log\.debug
+    bootstrap_servers
+    KafkaProducer
+    KafkaConsumer
+    producer\.send
+    producer\.flush
+    consumer\.close
+    requests\.get
+    geolocator\.geocode
+    Nominatim
+    retry
+    @retry
+    save_geocache
+    load_geocache
+    fetch_markets
+    fetch_from_api
+    fetch_current_weather
+    fetch_historical_weather
+    fetch_all_weather_markets
+    get_city_dates_from_kafka
+    get_coordinates
