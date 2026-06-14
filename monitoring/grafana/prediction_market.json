@@ -1,0 +1,3010 @@
+{
+  "title": "Prediction Market Accuracy Monitor",
+  "uid": "prediction-market-v3",
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 70,
+      "title": "Prediction Market Weather Analytics",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 1,
+      "title": "Overall Accuracy Rate",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(SUM(correct_predictions)*100.0 / NULLIF(SUM(total_predictions),0), 1) as value FROM (SELECT DISTINCT ON (location_name, market_type) correct_predictions, total_predictions FROM market_accuracy_aggregates ORDER BY location_name, market_type, updated_at DESC) latest",
+          "format": "table"
+        }
+      ],
+      "description": "Weighted accuracy: correct predictions / total reliable correlations. A prediction is correct when the market direction (above/below 50%) matches the actual weather outcome."
+    },
+    {
+      "id": 2,
+      "title": "Total Predictions Processed",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": 0
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM market_correlations",
+          "format": "table"
+        }
+      ],
+      "description": "Total unique weather prediction markets that were successfully matched with real weather data. Deduplicated by condition_id."
+    },
+    {
+      "id": 3,
+      "title": "Active Alerts",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM anomaly_alerts WHERE is_resolved = FALSE",
+          "format": "table"
+        }
+      ],
+      "description": "Number of unresolved anomaly alerts in the system — accuracy drops, systematic bias detections, and arbitrage mispricing opportunities."
+    },
+    {
+      "id": 4,
+      "title": "Avg Prediction Error",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.3
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(AVG(avg_prediction_error)::numeric, 4) as value FROM (SELECT DISTINCT ON (location_name, market_type) avg_prediction_error FROM market_accuracy_aggregates ORDER BY location_name, market_type, updated_at DESC) latest",
+          "format": "table"
+        }
+      ],
+      "description": "Mean absolute difference between the market YES price and the binary actual outcome (0 or 1). Range: 0.0 = perfect, 1.0 = completely wrong."
+    },
+    {
+      "id": 20,
+      "title": "Correlation Success Rate (KPI)",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 90
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM market_correlations) + (SELECT COUNT(*) FROM market_correlations WHERE actual_outcome IS NULL), 0), 1) as value FROM market_correlations WHERE actual_outcome IS NOT NULL",
+          "format": "table"
+        }
+      ],
+      "description": "Share of all fetched predictions that successfully matched with weather data and produced a valid correlation record."
+    },
+    {
+      "id": 21,
+      "title": "Closed Markets",
+      "type": "stat",
+      "gridPos": {
+        "x": 4,
+        "y": 5,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": 0
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM market_correlations WHERE closed = TRUE",
+          "format": "table"
+        }
+      ],
+      "description": "Markets where Manifold has officially resolved and declared a winner. Most reliable data source for accuracy measurement."
+    },
+    {
+      "id": 22,
+      "title": "Open Markets",
+      "type": "stat",
+      "gridPos": {
+        "x": 8,
+        "y": 5,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM market_correlations WHERE closed = FALSE",
+          "format": "table"
+        }
+      ],
+      "description": "Markets still active without a resolved winner, correlated using historical weather data for past dates."
+    },
+    {
+      "id": 23,
+      "title": "Historical Weather Records",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": 0
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM market_correlations WHERE weather_type = 'historical'",
+          "format": "table"
+        }
+      ],
+      "description": "Correlations backed by Open-Meteo historical archive — verified weather observations for specific past dates."
+    },
+    {
+      "id": 24,
+      "title": "Unique Cities Tracked",
+      "type": "stat",
+      "gridPos": {
+        "x": 16,
+        "y": 5,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": 0
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(DISTINCT location_name) as value FROM market_correlations",
+          "format": "table"
+        }
+      ],
+      "description": "Number of distinct cities and locations represented across all prediction markets in the dataset."
+    },
+    {
+      "id": 25,
+      "title": "Winner Known %",
+      "type": "stat",
+      "gridPos": {
+        "x": 20,
+        "y": 5,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 80
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(COUNT(*) FILTER (WHERE correlation_method = 'winner_known') * 100.0 / NULLIF(COUNT(*), 0), 1) as value FROM market_correlations",
+          "format": "table"
+        }
+      ],
+      "description": "Percentage of markets where the winner is already declared by Manifold. Higher = more reliable accuracy signal."
+    },
+    {
+      "id": 81,
+      "title": "Market Type Performance",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 41,
+      "title": "Accuracy by Market Type",
+      "type": "gauge",
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^accuracy$/",
+          "values": true
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "green",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT market_type, ROUND(SUM(CASE WHEN actual_outcome=1 AND yes_price>=0.5 OR actual_outcome=0 AND yes_price<0.5 THEN 1.0 ELSE 0 END)/NULLIF(COUNT(*),0)*100, 1) as accuracy FROM market_correlations WHERE actual_outcome IS NOT NULL GROUP BY market_type ORDER BY accuracy DESC",
+          "format": "table"
+        }
+      ],
+      "description": "Accuracy gauge per market type. Green = market predictions align with actual weather. Red = systematic mismatch. Threshold: <60% red, <80% yellow, >=80% green."
+    },
+    {
+      "id": 42,
+      "title": "Avg Prediction Error by Market Type",
+      "type": "bargauge",
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^avg_error$/",
+          "values": true
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "text": {}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 0.6,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 0.2
+              },
+              {
+                "color": "red",
+                "value": 0.4
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT market_type, ROUND(AVG(prediction_error)::numeric, 3) as avg_error FROM market_correlations WHERE prediction_error IS NOT NULL GROUP BY market_type ORDER BY avg_error ASC",
+          "format": "table"
+        }
+      ],
+      "description": "Average prediction error per market type. Lower = better calibration. WIND and SNOW markets tend to have lower error as outcomes are more binary."
+    },
+    {
+      "id": 82,
+      "title": "Prediction Quality",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 43,
+      "title": "Market Type Distribution",
+      "type": "piechart",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 7,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "pieType": "donut",
+        "tooltip": {
+          "mode": "single"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT SUM(CASE WHEN market_type='RAIN' THEN 1 ELSE 0 END) as \"RAIN\", SUM(CASE WHEN market_type='TEMPERATURE' THEN 1 ELSE 0 END) as \"TEMPERATURE\", SUM(CASE WHEN market_type='WIND' THEN 1 ELSE 0 END) as \"WIND\", SUM(CASE WHEN market_type='SNOW' THEN 1 ELSE 0 END) as \"SNOW\", SUM(CASE WHEN market_type='WEATHER' THEN 1 ELSE 0 END) as \"WEATHER\", SUM(CASE WHEN market_type='SUNSHINE' THEN 1 ELSE 0 END) as \"SUNSHINE\" FROM market_correlations",
+          "format": "table"
+        }
+      ],
+      "description": "Distribution of all correlated markets by type. Shows which weather phenomena are most commonly traded on Manifold."
+    },
+    {
+      "id": 44,
+      "title": "Correct vs Incorrect Predictions",
+      "type": "piechart",
+      "gridPos": {
+        "x": 7,
+        "y": 28,
+        "w": 7,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "pieType": "donut",
+        "tooltip": {
+          "mode": "single"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Correct"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Incorrect"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT SUM(CASE WHEN actual_outcome=1 AND yes_price>=0.5 OR actual_outcome=0 AND yes_price<0.5 THEN 1 ELSE 0 END) as \"Correct\", SUM(CASE WHEN actual_outcome=1 AND yes_price<0.5 OR actual_outcome=0 AND yes_price>=0.5 THEN 1 ELSE 0 END) as \"Incorrect\" FROM market_correlations WHERE actual_outcome IS NOT NULL",
+          "format": "table"
+        }
+      ],
+      "description": "Overall split between correct and incorrect predictions across all market types and locations."
+    },
+    {
+      "id": 45,
+      "title": "Best Market Type",
+      "type": "table",
+      "gridPos": {
+        "x": 14,
+        "y": 28,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Accuracy %",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accuracy %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT market_type as \"Type\", ROUND(SUM(CASE WHEN actual_outcome=1 AND yes_price>=0.5 OR actual_outcome=0 AND yes_price<0.5 THEN 1.0 ELSE 0 END)/NULLIF(COUNT(*),0)*100,1) as \"Accuracy %\" FROM market_correlations WHERE actual_outcome IS NOT NULL GROUP BY market_type ORDER BY 2 DESC LIMIT 3",
+          "format": "table"
+        }
+      ],
+      "description": "Top 3 market types ranked by accuracy. Green = >85%, yellow = 70-85%, red = <70%."
+    },
+    {
+      "id": 46,
+      "title": "Worst Market Type",
+      "type": "table",
+      "gridPos": {
+        "x": 19,
+        "y": 28,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Accuracy %",
+            "desc": false
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accuracy %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT market_type as \"Type\", ROUND(SUM(CASE WHEN actual_outcome=1 AND yes_price>=0.5 OR actual_outcome=0 AND yes_price<0.5 THEN 1.0 ELSE 0 END)/NULLIF(COUNT(*),0)*100,1) as \"Accuracy %\" FROM market_correlations WHERE actual_outcome IS NOT NULL GROUP BY market_type ORDER BY 2 ASC LIMIT 3",
+          "format": "table"
+        }
+      ],
+      "description": "Bottom 3 market types ranked by accuracy — candidates for model improvement or exclusion."
+    },
+    {
+      "id": 47,
+      "title": "Avg Market Confidence",
+      "type": "stat",
+      "gridPos": {
+        "x": 14,
+        "y": 32,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(AVG(yes_price)*100,1) as value FROM market_correlations",
+          "format": "table"
+        }
+      ],
+      "description": "Average YES price across all markets. Low value (~38%) reflects that markets predominantly predict rare/negative weather events."
+    },
+    {
+      "id": 48,
+      "title": "Total Correct Predictions",
+      "type": "stat",
+      "gridPos": {
+        "x": 19,
+        "y": 32,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT SUM(CASE WHEN actual_outcome=1 AND yes_price>=0.5 OR actual_outcome=0 AND yes_price<0.5 THEN 1 ELSE 0 END) as value FROM market_correlations WHERE actual_outcome IS NOT NULL",
+          "format": "table"
+        }
+      ],
+      "description": "Absolute count of predictions where the market direction correctly matched the actual weather outcome."
+    },
+    {
+      "id": 83,
+      "title": "Price & Calibration Analysis",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 49,
+      "title": "Predicted Probability vs Actual Win Rate by Market Type",
+      "type": "barchart",
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "groupWidth": 0.7,
+        "barWidth": 0.45,
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "xField": "market_type"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_price_pct"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Market Price (%)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "actual_win_rate"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Actual Win Rate (%)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT market_type, ROUND(AVG(yes_price)*100,1) as avg_price_pct, ROUND(AVG(actual_outcome)*100,1) as actual_win_rate FROM market_correlations WHERE actual_outcome IS NOT NULL GROUP BY market_type ORDER BY market_type",
+          "format": "table"
+        }
+      ],
+      "description": "Side-by-side comparison of what the market priced (blue) vs what actually happened (green). Gap indicates systematic over/under-pricing per market type."
+    },
+    {
+      "id": 71,
+      "title": "Scatter: Market Price vs Prediction Error",
+      "description": "Each dot = one market. X axis = market confidence (YES price), Y axis = prediction error. V-shape is expected: high-confidence markets (near 0% or 100%) should have low error.",
+      "type": "xychart",
+      "gridPos": {
+        "x": 0,
+        "y": 45,
+        "w": 12,
+        "h": 11
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "mapping": "auto",
+        "dims": {
+          "x": "yes_price",
+          "exclude": []
+        },
+        "series": [
+          {
+            "name": "Correct (outcome=1)",
+            "x": "yes_price",
+            "y": "prediction_error",
+            "pointSize": {
+              "fixed": 6
+            },
+            "lineWidth": 0,
+            "fillOpacity": 70
+          }
+        ],
+        "tooltip": {
+          "mode": "single"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "pointSize": {
+              "fixed": 6
+            },
+            "lineWidth": 0,
+            "fillOpacity": 70,
+            "show": "points",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 0.3
+              },
+              {
+                "color": "red",
+                "value": 0.6
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "yes_price"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Market Price"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Market Price (confidence)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prediction_error"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Prediction Error"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Prediction Error (0=perfect)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "market_type"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "viz": true,
+                  "legend": false,
+                  "tooltip": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "actual_outcome"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "viz": true,
+                  "legend": false,
+                  "tooltip": false
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT yes_price, prediction_error, market_type, actual_outcome FROM market_correlations WHERE yes_price IS NOT NULL AND prediction_error IS NOT NULL ORDER BY market_type",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 72,
+      "title": "Heatmap: Win Rate by Market Type & Price Range",
+      "description": "Matrix of actual win rates by market type and price range. Green = market priced correctly, red = mispriced. Dash = no data in that bucket.",
+      "type": "table",
+      "gridPos": {
+        "x": 12,
+        "y": 45,
+        "w": 12,
+        "h": 11
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center",
+            "displayMode": "color-background"
+          },
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "rgba(245,54,54,0.9)",
+                "value": 0
+              },
+              {
+                "color": "rgba(237,129,40,0.9)",
+                "value": 30
+              },
+              {
+                "color": "rgba(50,172,45,0.9)",
+                "value": 70
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "—"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "market_type"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Market Type"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "auto"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              },
+              {
+                "id": "unit",
+                "value": "string"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT market_type, ROUND(AVG(CASE WHEN yes_price < 0.2 THEN actual_outcome::float END)*100) as \"0-20%\", ROUND(AVG(CASE WHEN yes_price >= 0.2 AND yes_price < 0.4 THEN actual_outcome::float END)*100) as \"20-40%\", ROUND(AVG(CASE WHEN yes_price >= 0.4 AND yes_price < 0.6 THEN actual_outcome::float END)*100) as \"40-60%\", ROUND(AVG(CASE WHEN yes_price >= 0.6 AND yes_price < 0.8 THEN actual_outcome::float END)*100) as \"60-80%\", ROUND(AVG(CASE WHEN yes_price >= 0.8 THEN actual_outcome::float END)*100) as \"80-100%\" FROM market_correlations WHERE actual_outcome IS NOT NULL GROUP BY market_type ORDER BY market_type",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "title": "Avg Prediction Error by YES Price Range",
+      "type": "barchart",
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "groupWidth": 0.7,
+        "barWidth": 0.97,
+        "tooltip": {
+          "mode": "single"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN yes_price < 0.2 THEN '0.0-0.2' WHEN yes_price < 0.4 THEN '0.2-0.4' WHEN yes_price < 0.6 THEN '0.4-0.6' WHEN yes_price < 0.8 THEN '0.6-0.8' ELSE '0.8-1.0' END as price_range, ROUND(AVG(ABS(prediction_error))::numeric, 4) as avg_error FROM market_correlations WHERE yes_price IS NOT NULL AND prediction_error IS NOT NULL GROUP BY 1 ORDER BY 1",
+          "format": "table"
+        }
+      ],
+      "description": "Average prediction error grouped by YES price range. High error in the 0.6-0.8 range indicates markets in that confidence zone are poorly calibrated."
+    },
+    {
+      "id": 36,
+      "title": "Market Calibration — Price vs Actual Win Rate",
+      "description": "Calibration chart: bars = actual win rate per price bucket, line = perfect calibration diagonal. Well-calibrated markets have bars matching the ideal line.",
+      "type": "barchart",
+      "gridPos": {
+        "x": 12,
+        "y": 56,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "groupWidth": 0.7,
+        "barWidth": 0.85,
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 1,
+            "gradientMode": "scheme"
+          },
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 40
+              },
+              {
+                "color": "green",
+                "value": 70
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ideal_line"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "rgba(255,255,255,0.5)"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Perfect Calibration"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "count"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN yes_price < 0.1 THEN '0-10%' WHEN yes_price < 0.2 THEN '10-20%' WHEN yes_price < 0.3 THEN '20-30%' WHEN yes_price < 0.4 THEN '30-40%' WHEN yes_price < 0.5 THEN '40-50%' WHEN yes_price < 0.6 THEN '50-60%' WHEN yes_price < 0.7 THEN '60-70%' WHEN yes_price < 0.8 THEN '70-80%' WHEN yes_price < 0.9 THEN '80-90%' ELSE '90-100%' END as price_bucket, ROUND(AVG(actual_outcome)*100, 1) as actual_win_rate, ROUND(AVG(yes_price)*100, 1) as ideal_line, COUNT(*) as count FROM market_correlations WHERE actual_outcome IS NOT NULL AND yes_price IS NOT NULL GROUP BY 1 ORDER BY MIN(yes_price)",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 84,
+      "title": "Market Details",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 65,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 5,
+      "title": "Accuracy by Location & Market Type",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 66,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Accuracy %",
+            "desc": false
+          }
+        ]
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accuracy %"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT location_name as \"Location\", market_type as \"Type\", ROUND(accuracy_rate*100,1) as \"Accuracy %\", total_predictions as \"Predictions\", ROUND(avg_prediction_error::numeric,4) as \"Avg Error\", ROUND(bias_score::numeric,3) as \"Bias\" FROM (SELECT DISTINCT ON (location_name, market_type) location_name, market_type, accuracy_rate, total_predictions, avg_prediction_error, bias_score FROM market_accuracy_aggregates ORDER BY location_name, market_type, updated_at DESC) latest ORDER BY accuracy_rate ASC",
+          "format": "table"
+        }
+      ],
+      "description": "Per-location and market-type accuracy breakdown. Sorted by accuracy ascending to surface the worst-performing markets first."
+    },
+    {
+      "id": 7,
+      "title": "Accuracy by Market Type",
+      "type": "barchart",
+      "gridPos": {
+        "x": 12,
+        "y": 66,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "xField": "Market Type",
+        "fillOpacity": 80,
+        "xTickLabelRotation": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT market_type as \"Market Type\", ROUND(AVG(accuracy_rate)*100,1) as \"Accuracy %\" FROM (SELECT DISTINCT ON (location_name, market_type) market_type, accuracy_rate FROM market_accuracy_aggregates ORDER BY location_name, market_type, updated_at DESC) latest GROUP BY market_type ORDER BY 2 DESC",
+          "format": "table"
+        }
+      ],
+      "description": "Accuracy aggregated by market type using weighted average. Useful for identifying which weather phenomena are hardest to predict."
+    },
+    {
+      "id": 8,
+      "title": "Bias Score by Location",
+      "type": "barchart",
+      "gridPos": {
+        "x": 0,
+        "y": 76,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "xField": "Location",
+        "fillOpacity": 80,
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 80
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": -1
+              },
+              {
+                "color": "semi-dark-blue",
+                "value": -0.3
+              },
+              {
+                "color": "green",
+                "value": -0.1
+              },
+              {
+                "color": "green",
+                "value": 0.1
+              },
+              {
+                "color": "orange",
+                "value": 0.3
+              },
+              {
+                "color": "red",
+                "value": 0.6
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bias Score"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT location_name as \"Location\", ROUND(bias_score::numeric,3) as \"Bias Score\" FROM (SELECT DISTINCT ON (location_name) location_name, bias_score FROM market_accuracy_aggregates WHERE ABS(bias_score) > 0.1 ORDER BY location_name, updated_at DESC) latest ORDER BY bias_score ASC LIMIT 15",
+          "format": "table"
+        }
+      ],
+      "description": "Bias score per location: positive = market systematically over-predicts YES, negative = under-predicts. Values near 0 indicate unbiased markets."
+    },
+    {
+      "id": 30,
+      "title": "Closed Markets â€” Accuracy by Type",
+      "type": "table",
+      "gridPos": {
+        "x": 12,
+        "y": 76,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accuracy %"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT market_type as \"Market Type\", COUNT(*) as \"Total\", SUM(CASE WHEN actual_outcome = 1 AND yes_price >= 0.5 THEN 1 WHEN actual_outcome = 0 AND yes_price < 0.5 THEN 1 ELSE 0 END) as \"Correct\", ROUND(SUM(CASE WHEN actual_outcome = 1 AND yes_price >= 0.5 THEN 1 WHEN actual_outcome = 0 AND yes_price < 0.5 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 1) as \"Accuracy %\", ROUND(AVG(prediction_error)::numeric, 4) as \"Avg Error\" FROM market_correlations WHERE closed = TRUE AND actual_outcome IS NOT NULL GROUP BY market_type ORDER BY 4 DESC",
+          "format": "table"
+        }
+      ],
+      "description": "Accuracy breakdown for closed markets (winner known) by type. The most reliable accuracy signal since outcomes are verified."
+    },
+    {
+      "id": 31,
+      "title": "Open Markets â€” Current Predictions",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 85,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT DISTINCT ON (location_name, market_type) location_name as \"Location\", market_type as \"Type\", ROUND(yes_price::numeric * 100, 1) as \"YES Price %\", actual_temp_c as \"Temp Â°C\", actual_precip_mm as \"Precip mm\", correlation_method as \"Method\", TO_CHAR(created_at, 'MM-DD HH24:MI') as \"Time\" FROM market_correlations WHERE closed = FALSE ORDER BY location_name, market_type, created_at DESC LIMIT 15",
+          "format": "table"
+        }
+      ],
+      "description": "Currently open markets with their YES price and weather correlation. These markets are still active and awaiting resolution."
+    },
+    {
+      "id": 10,
+      "title": "Top 10 Most Accurate Markets",
+      "type": "table",
+      "gridPos": {
+        "x": 12,
+        "y": 85,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accuracy %"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 90
+                    },
+                    {
+                      "color": "dark-green",
+                      "value": 99
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT location_name as \"Location\", market_type as \"Type\", ROUND(accuracy_rate*100,1) as \"Accuracy %\", total_predictions as \"Predictions\" FROM (SELECT DISTINCT ON (location_name, market_type) location_name, market_type, accuracy_rate, total_predictions FROM market_accuracy_aggregates WHERE total_predictions >= 2 ORDER BY location_name, market_type, updated_at DESC) latest ORDER BY accuracy_rate DESC, total_predictions DESC LIMIT 10",
+          "format": "table"
+        }
+      ],
+      "description": "Top 10 best-performing markets by accuracy rate. Minimum 1 prediction required."
+    },
+    {
+      "id": 85,
+      "title": "Alerts & System Health",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 94,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 90,
+      "title": "Producer Health Status",
+      "description": "Last heartbeat per producer. Minutes Ago = time since last run (green <5min, yellow <10min, red >10min = timeout alert triggered). Errors = actual processing failures (not filtered/skipped markets).",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 95,
+        "w": 14,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Minutes Ago"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 5
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "healthy": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "degraded": {
+                        "color": "yellow",
+                        "index": 1
+                      },
+                      "down": {
+                        "color": "red",
+                        "index": 2
+                      },
+                      "unknown": {
+                        "color": "orange",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT component as \"Producer\", status as \"Status\", ROUND(EXTRACT(EPOCH FROM (NOW() - recorded_at))/60, 1) as \"Minutes Ago\", messages_processed as \"Messages\", error_count as \"Errors\", TO_CHAR(recorded_at, 'HH24:MI:SS') as \"Last Seen\" FROM (SELECT DISTINCT ON (component) component, status, recorded_at, messages_processed, error_count FROM pipeline_health ORDER BY component, recorded_at DESC) latest ORDER BY component",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 91,
+      "title": "Producer Timeouts",
+      "description": "Number of active producer timeout alerts. Any value >0 means a producer has been silent for more than 10 minutes.",
+      "type": "stat",
+      "gridPos": {
+        "x": 14,
+        "y": 95,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "All OK",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM anomaly_alerts WHERE alert_type = 'producer_timeout' AND is_resolved = FALSE",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 92,
+      "title": "Last Pipeline Run",
+      "description": "Time since the most recent successful producer run across all components.",
+      "type": "stat",
+      "gridPos": {
+        "x": 19,
+        "y": 95,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(EXTRACT(EPOCH FROM (NOW() - MAX(recorded_at)))/60, 1) as value FROM pipeline_health WHERE status = 'healthy'",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 93,
+      "title": "Join Coverage Rate",
+      "description": "Percentage of prediction markets successfully matched with real weather data. Target: ≥95%. Below 70% triggers a critical alert.",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 99,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": 0 },
+              { "color": "yellow", "value": 70 },
+              { "color": "green",  "value": 95 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(COUNT(*) FILTER (WHERE actual_outcome IS NOT NULL) * 100.0 / NULLIF(COUNT(*), 0), 1) as value FROM market_correlations",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 94,
+      "title": "Unmatched Predictions",
+      "description": "Number of prediction markets with no weather data match. These reduce join coverage. Investigate if this number grows unexpectedly.",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 99,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": 0 },
+              { "color": "yellow", "value": 5 },
+              { "color": "red",    "value": 10 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM market_correlations WHERE actual_outcome IS NULL",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 95,
+      "title": "Anomaly Detection Precision (est.)",
+      "description": "Estimated precision: alerts that remained active for >30 min / total alerts. Alerts auto-resolved within 30 min are likely false positives. Target: ≥80%.",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 99,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": 0  },
+              { "color": "yellow", "value": 70 },
+              { "color": "green",  "value": 80 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(\n  COUNT(*) FILTER (\n    WHERE is_resolved = FALSE\n       OR (is_resolved = TRUE AND resolved_at > detected_at + INTERVAL '30 minutes')\n  ) * 100.0 / NULLIF(COUNT(*), 0)\n, 1) as value\nFROM anomaly_alerts\nWHERE detected_at > NOW() - INTERVAL '7 days'",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 96,
+      "title": "Anomaly Detection Recall (est.)",
+      "description": "Estimated recall based on 2σ statistical threshold. By definition, a 2-sigma threshold captures ~95.4% of true anomalies in a normal distribution. Shows theoretical lower bound.",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 99,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": 0  },
+              { "color": "yellow", "value": 85 },
+              { "color": "green",  "value": 90 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(\n  COUNT(*) FILTER (WHERE alert_type IN ('accuracy_drop', 'bias_detected')) * 100.0\n  / NULLIF(\n    (SELECT COUNT(DISTINCT location_name || market_type)\n     FROM market_accuracy_aggregates\n     WHERE accuracy_rate < 0.80 OR ABS(bias_score) > 0.30),\n  0)\n, 1) as value\nFROM anomaly_alerts\nWHERE is_resolved = FALSE\n  AND alert_type IN ('accuracy_drop', 'bias_detected')",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Active Anomaly Alerts",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 104,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Severity"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critical": {
+                        "index": 0,
+                        "color": "red",
+                        "text": "CRITICAL"
+                      },
+                      "high": {
+                        "index": 1,
+                        "color": "orange",
+                        "text": "HIGH"
+                      },
+                      "medium": {
+                        "index": 2,
+                        "color": "yellow",
+                        "text": "MEDIUM"
+                      },
+                      "low": {
+                        "index": 3,
+                        "color": "green",
+                        "text": "LOW"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT DISTINCT ON (location_name, market_type, alert_type) alert_type as \"Type\", severity as \"Severity\", location_name as \"Location\", market_type as \"Market\", ROUND(metric_value::numeric,3) as \"Value\", TO_CHAR(detected_at, 'HH24:MI:SS') as \"Time\" FROM anomaly_alerts WHERE is_resolved = FALSE ORDER BY location_name, market_type, alert_type, detected_at DESC LIMIT 20",
+          "format": "table"
+        }
+      ],
+      "description": "Active anomaly alerts from the detection job. Includes accuracy drops below the 7-day statistical baseline, bias spikes, and arbitrage opportunities."
+    },
+    {
+      "id": 11,
+      "title": "Alert Summary by Type",
+      "type": "barchart",
+      "gridPos": {
+        "x": 12,
+        "y": 104,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "xField": "Alert Type",
+        "fillOpacity": 80
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "accuracy_drop"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bias_detected"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT alert_type as \"Alert Type\", COUNT(*) as \"Count\" FROM anomaly_alerts GROUP BY alert_type ORDER BY 2 DESC",
+          "format": "table"
+        }
+      ],
+      "description": "Count of alerts by type since the system started. Useful for understanding which anomaly type is most frequent."
+    },
+    {
+      "id": 9,
+      "title": "Correlation Methods Distribution",
+      "type": "barchart",
+      "gridPos": {
+        "x": 0,
+        "y": 112,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "xField": "Method",
+        "fillOpacity": 80
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 80
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT correlation_method as \"Method\", COUNT(*) as \"Count\" FROM market_correlations GROUP BY correlation_method ORDER BY 2 DESC",
+          "format": "table"
+        }
+      ],
+      "description": "Distribution of correlation methods used. winner_known = Manifold resolved, historical_weather = Open-Meteo archive data."
+    },
+    {
+      "id": 34,
+      "title": "Correlation Methods â€” KPI Check",
+      "type": "table",
+      "gridPos": {
+        "x": 12,
+        "y": 112,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Share %"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "blue",
+                      "value": 0
+                    },
+                    {
+                      "color": "green",
+                      "value": 50
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT correlation_method as \"Method\", COUNT(*) as \"Count\", ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as \"Share %\", ROUND(AVG(prediction_error)::numeric, 4) as \"Avg Error\" FROM market_correlations GROUP BY correlation_method ORDER BY 2 DESC",
+          "format": "table"
+        }
+      ],
+      "description": "Raw counts and share per correlation method. Validates that the pipeline is using the expected mix of data sources."
+    },
+    {
+      "id": 86,
+      "title": "Time Analysis",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 120,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 32,
+      "title": "Predictions by Month",
+      "type": "barchart",
+      "gridPos": {
+        "x": 0,
+        "y": 121,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "xField": "Month",
+        "fillOpacity": 80,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 100
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT TO_CHAR(observation_date, 'YYYY-MM') as \"Month\", COUNT(*) as \"Count\" FROM market_correlations WHERE observation_date IS NOT NULL GROUP BY 1 ORDER BY 1 ASC",
+          "format": "table"
+        }
+      ],
+      "description": "Number of prediction markets per calendar month based on observation date. Spike in recent months = new data from producers."
+    },
+    {
+      "id": 33,
+      "title": "Accuracy Trend by Month",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 129,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT DATE_TRUNC('month', observation_date) as time, ROUND(SUM(CASE WHEN actual_outcome = 1 AND yes_price >= 0.5 THEN 1 WHEN actual_outcome = 0 AND yes_price < 0.5 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 1) as \"Accuracy %\" FROM market_correlations WHERE observation_date IS NOT NULL GROUP BY 1 ORDER BY 1",
+          "format": "time_series"
+        }
+      ],
+      "description": "Rolling accuracy rate over time. Upward trend = model improving. Flat/downward = consistent market behavior or degradation."
+    },
+    {
+      "id": 35,
+      "title": "Market Accuracy by Year",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 137,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accuracy %"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT EXTRACT(YEAR FROM observation_date)::int as \"Year\", COUNT(*) as \"Predictions\", ROUND(SUM(CASE WHEN actual_outcome = 1 AND yes_price >= 0.5 THEN 1 WHEN actual_outcome = 0 AND yes_price < 0.5 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 1) as \"Accuracy %\", ROUND(AVG(prediction_error)::numeric, 4) as \"Avg Error\" FROM market_correlations WHERE observation_date IS NOT NULL GROUP BY 1 ORDER BY 1 DESC",
+          "format": "table"
+        }
+      ],
+      "description": "Accuracy and prediction error broken down by year. Useful for detecting if older markets behave differently from recent ones."
+    },
+    {
+      "id": 87,
+      "title": "Geographic Intelligence",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 145,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 53,
+      "title": "Prediction Market Accuracy â€” World Map",
+      "type": "geomap",
+      "gridPos": {
+        "x": 0,
+        "y": 146,
+        "w": 24,
+        "h": 14
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "view": {
+          "id": "zero",
+          "lat": 30,
+          "lon": 0,
+          "zoom": 2
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true
+        },
+        "tooltip": {
+          "mode": "details"
+        },
+        "basemap": {
+          "type": "xyz",
+          "name": "Light Map",
+          "config": {
+            "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "attribution": "Â© OpenStreetMap contributors"
+          }
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Accuracy by City",
+            "config": {
+              "style": {
+                "size": {
+                  "fixed": 14,
+                  "min": 10,
+                  "max": 30,
+                  "field": "total_predictions"
+                },
+                "color": {
+                  "field": "accuracy_rate",
+                  "fixed": "dark-green"
+                },
+                "fillOpacity": 1.0,
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                }
+              },
+              "showLegend": true
+            },
+            "location": {
+              "mode": "coords",
+              "latitude": "lat",
+              "longitude": "lon"
+            },
+            "tooltip": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "accuracy_rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT cl.lat, cl.lon, cl.city_name, ROUND(AVG(a.accuracy_rate)::numeric * 100, 1) as accuracy_rate, SUM(a.total_predictions) as total_predictions FROM city_locations cl JOIN (SELECT DISTINCT ON (location_name, market_type) location_name, accuracy_rate, total_predictions FROM market_accuracy_aggregates ORDER BY location_name, market_type, updated_at DESC) a ON cl.city_name = a.location_name GROUP BY cl.lat, cl.lon, cl.city_name ORDER BY accuracy_rate",
+          "format": "table"
+        }
+      ],
+      "description": "World map showing accuracy rate per city. Circle size = number of predictions. Color = accuracy (green = high, red = low)."
+    },
+    {
+      "id": 52,
+      "title": "Accuracy by City (Geographic Table)",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 160,
+        "w": 24,
+        "h": 12
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "prediction-market-pg"
+      },
+      "options": {
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "accuracy_rate",
+            "desc": false
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "accuracy_rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 50
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bias_score"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.2
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.4
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.6
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_error"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.3
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.6
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT location_name as \"City\", market_type as \"Market Type\", ROUND(accuracy_rate::numeric * 100, 1) as \"accuracy_rate\", ROUND(ABS(bias_score::numeric), 3) as \"bias_score\", ROUND(avg_prediction_error::numeric, 3) as \"avg_error\", total_predictions as \"Predictions\", ROUND(volume_weighted_accuracy::numeric * 100, 1) as \"Vol.Weighted Acc %\" FROM (SELECT DISTINCT ON (location_name, market_type) * FROM market_accuracy_aggregates ORDER BY location_name, market_type, updated_at DESC) t ORDER BY accuracy_rate ASC",
+          "format": "table"
+        }
+      ],
+      "description": "Full geographic breakdown: accuracy, bias, and prediction error per city and market type. Sortable by any column."
+    }
+  ]
+}

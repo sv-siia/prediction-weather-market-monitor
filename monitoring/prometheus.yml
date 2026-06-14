@@ -1,0 +1,66 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  scrape_timeout:      10s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files: []
+
+scrape_configs:
+
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── Python services (prometheus_client HTTP servers) ─────────────
+  - job_name: manifold_producer
+    static_configs:
+      - targets: ["manifold-producer:8000"]
+    metrics_path: /metrics
+
+  - job_name: weather_producer
+    static_configs:
+      - targets: ["weather-producer:8001"]
+    metrics_path: /metrics
+
+  - job_name: correlation_job
+    static_configs:
+      - targets: ["correlation-job:8002"]
+    metrics_path: /metrics
+
+  - job_name: aggregation_job
+    static_configs:
+      - targets: ["aggregation-job:8003"]
+    metrics_path: /metrics
+
+  - job_name: anomaly_job
+    static_configs:
+      - targets: ["anomaly-job:8004"]
+    metrics_path: /metrics
+
+  # ── Flink cluster metrics ─────────────────────────────────────────
+  - job_name: flink_jobmanager
+    static_configs:
+      - targets: ["flink-jobmanager:9249"]
+    metrics_path: /
+
+  - job_name: flink_taskmanager
+    static_configs:
+      - targets: ["flink-taskmanager:9249"]
+    metrics_path: /
+
+  # ── Kafka broker metrics via JMX exporter ─────────────────────────
+  # Requires KAFKA_JMX_PORT=9101 env var + jmx_exporter sidecar
+  # - job_name: kafka
+  #   static_configs:
+  #     - targets: ["kafka:9101"]
+
+  # ── PostgreSQL metrics via postgres_exporter sidecar ──────────────
+  # - job_name: postgres
+  #   static_configs:
+  #     - targets: ["postgres-exporter:9187"]
